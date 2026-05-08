@@ -210,13 +210,9 @@ export class ErrorTracker {
   getErrors(filter?: ErrorFilter): TrackedError[] {
     let errors = Array.from(this.errors.values());
 
-    // By default, exclude resolved errors unless explicitly requested
-    const effectiveFilter: ErrorFilter = filter 
-      ? { resolved: false, ...filter }
-      : { resolved: false };
-
-    if (effectiveFilter) {
-      errors = errors.filter(error => this.matchesFilter(error, effectiveFilter));
+    // Apply filter if provided, otherwise return all errors
+    if (filter) {
+      errors = errors.filter(error => this.matchesFilter(error, filter));
     }
 
     // Sort by severity and timestamp
