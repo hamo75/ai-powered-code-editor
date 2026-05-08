@@ -127,7 +127,7 @@ export const createUiSlice: StateCreator<EditorStore, [], [], UiSlice> = (set, g
     
     // Add Dart analysis issues - these are the primary source of errors
     state.dartIssues.forEach((issue, index) => {
-      issues.push({
+      const problemItem: ProblemItem = {
         id: issue.id || `dart-${index}`,
         severity: issue.severity as 'error' | 'warning' | 'info',
         message: issue.message,
@@ -136,34 +136,65 @@ export const createUiSlice: StateCreator<EditorStore, [], [], UiSlice> = (set, g
         line: issue.line,
         column: issue.column,
         source: issue.code ? issue.code : 'Dart Analyzer',
-      });
+      };
+      
+      issues.push(problemItem);
+      
+      // Track Dart errors in ErrorTracker (only errors, not warnings/info)
+      if (issue.severity === 'error') {
+        errorTracker.track({
+          message: issue.message,
+          severity: 'error',
+          category: 'syntax',
+          source: 'analyzer',
+          context: 'ANALYZER',
+          code: issue.code,
+          recoverable: true,
+          resolved: false,
+          metadata: {
+            fileId: issue.fileId,
+            fileName: issue.fileName,
+            line: issue.line,
+            column: issue.column,
+          },
+        });
+      }
     });
 
     // Add errors from ErrorTracker (system errors, not Dart analysis errors)
     // Only include unresolved errors to avoid duplicates with resolved issues
     const trackedErrors = errorTracker.getErrors({ resolved: false });
     trackedErrors.forEach((error, index) => {
-      // Map ErrorTracker severity to ProblemSeverity
-      // critical -> error, error -> error, warning -> warning, info -> info
-      let problemSeverity: 'error' | 'warning' | 'info';
-      if (error.severity === 'critical' || error.severity === 'error') {
-        problemSeverity = 'error';
-      } else if (error.severity === 'warning') {
-        problemSeverity = 'warning';
-      } else {
-        problemSeverity = 'info';
-      }
+      // Check if this error is already in issues (from Dart analysis)
+      const isDuplicate = issues.some(
+        p => p.message === error.message && 
+             p.line === (error.metadata?.line || 1) &&
+             p.fileName === (error.metadata?.fileName || 'System')
+      );
       
-      issues.push({
-        id: `tracker-${error.id}` || `error-${index}`,
-        severity: problemSeverity,
-        message: error.message,
-        fileName: error.context?.fileName || error.metadata?.fileName || 'System',
-        fileId: error.context?.fileId || error.metadata?.fileId || state.activeFileId || 'unknown',
-        line: error.context?.line || error.metadata?.line || 1,
-        column: error.context?.column || error.metadata?.column || 1,
-        source: error.category || 'ErrorTracker',
-      });
+      if (!isDuplicate) {
+        // Map ErrorTracker severity to ProblemSeverity
+        // critical -> error, error -> error, warning -> warning, info -> info
+        let problemSeverity: 'error' | 'warning' | 'info';
+        if (error.severity === 'critical' || error.severity === 'error') {
+          problemSeverity = 'error';
+        } else if (error.severity === 'warning') {
+          problemSeverity = 'warning';
+        } else {
+          problemSeverity = 'info';
+        }
+        
+        issues.push({
+          id: `tracker-${error.id}` || `error-${index}`,
+          severity: problemSeverity,
+          message: error.message,
+          fileName: error.context?.fileName || error.metadata?.fileName || 'System',
+          fileId: error.context?.fileId || error.metadata?.fileId || state.activeFileId || 'unknown',
+          line: error.context?.line || error.metadata?.line || 1,
+          column: error.context?.column || error.metadata?.column || 1,
+          source: error.category || 'ErrorTracker',
+        });
+      }
     });
 
     // Update problems in store
