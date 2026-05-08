@@ -125,7 +125,7 @@ export const createUiSlice: StateCreator<EditorStore, [], [], UiSlice> = (set, g
     const state = get();
     const issues: ProblemItem[] = [];
     
-    // Add Dart analysis issues
+    // Add Dart analysis issues - these are the primary source of errors
     state.dartIssues.forEach((issue, index) => {
       issues.push({
         id: issue.id || `dart-${index}`,
@@ -139,8 +139,9 @@ export const createUiSlice: StateCreator<EditorStore, [], [], UiSlice> = (set, g
       });
     });
 
-    // Add errors from ErrorTracker
-    const trackedErrors = errorTracker.getErrors();
+    // Add errors from ErrorTracker (system errors, not Dart analysis errors)
+    // Only include unresolved errors to avoid duplicates with resolved issues
+    const trackedErrors = errorTracker.getErrors({ resolved: false });
     trackedErrors.forEach((error, index) => {
       // Map ErrorTracker severity to ProblemSeverity
       // critical -> error, error -> error, warning -> warning, info -> info
@@ -178,7 +179,9 @@ export const createUiSlice: StateCreator<EditorStore, [], [], UiSlice> = (set, g
       errors: errorCount,
       warnings: warnCount,
       info: infoCount,
-      issues: issues,
+      dartIssuesCount: state.dartIssues.length,
+      trackedErrorsCount: trackedErrors.length,
+      issues: issues.slice(0, 10), // Show first 10 issues
     });
   },
 
