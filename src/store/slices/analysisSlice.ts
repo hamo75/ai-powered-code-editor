@@ -669,3 +669,34 @@ export const createAnalysisSlice: StateCreator<EditorStore, [], [], AnalysisSlic
       state.activeAgentTask.status = 'error';
       state.activeAgentTask.endTime = Date.now();
   
+      set({ activeAgentTask: null });
+    }
+  },
+
+  clearAgentTasks: () => {
+    set({ agentTasks: [], activeAgentTask: null, agentActionLog: [] });
+  },
+
+  // === DISCUSSION MODE ACTIONS ===
+
+  toggleDiscussionMode: () => {
+    set((state) => ({ discussionMode: !state.discussionMode }));
+    get().addNotification({
+      id: Date.now().toString(),
+      type: 'info',
+      message: get().discussionMode ? '💬 وضع النقاش مفعل' : '🔧 وضع التنفيذ المباشر',
+    });
+  },
+
+  setPendingTask: (task) => {
+    set({ pendingTask: task });
+  },
+
+  executePendingTask: async () => {
+    const state = get();
+    if (!state.pendingTask) return;
+
+    await get().executeAgentTask(state.pendingTask.description);
+    set({ pendingTask: null });
+  },
+});
