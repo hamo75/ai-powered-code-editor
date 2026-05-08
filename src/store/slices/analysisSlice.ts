@@ -1,6 +1,6 @@
 import { StateCreator } from 'zustand';
 import { EditorStore, DartIssue, ProblemItem, FixReport, AgentTask, PendingTask } from '../types/store';
-import { dartpadService } from '../../services/dartpad';
+import { dartpadService, type DartPadIssue } from '../../services/dartpad';
 
 export interface AnalysisSlice {
   // Dart Analysis State
@@ -668,89 +668,4 @@ export const createAnalysisSlice: StateCreator<EditorStore, [], [], AnalysisSlic
     if (state.activeAgentTask) {
       state.activeAgentTask.status = 'error';
       state.activeAgentTask.endTime = Date.now();
-      state.activeAgentTask.summary = 'ألغيت من قبل المستخدم';
-      
-      set({ 
-        isAgentRunning: false,
-        activeAgentTask: null,
-      });
-
-      get().addNotification({
-        id: Date.now().toString(),
-        type: 'info',
-        message: '⏹️ ألغيت المهمة',
-      });
-    }
-  },
-
-  clearAgentTasks: () => {
-    set({ agentTasks: [], activeAgentTask: null, agentActionLog: [] });
-    get().addNotification({
-      id: Date.now().toString(),
-      type: 'info',
-      message: '🗑️ تم مسح سجل المهام',
-    });
-  },
-
-  // === DISCUSSION MODE ACTIONS ===
-
-  toggleDiscussionMode: () => {
-    set((state) => ({ discussionMode: !state.discussionMode }));
-    get().addNotification({
-      id: Date.now().toString(),
-      type: 'info',
-      message: get().discussionMode 
-        ? '💬 وضع النقاش مفعّل' 
-        : '⚡ الوضع المباشر مفعّل',
-    });
-  },
-
-  setPendingTask: (task) => {
-    set({ pendingTask: task });
-    if (task) {
-      get().addNotification({
-        id: Date.now().toString(),
-        type: 'info',
-        message: `📝 مهمة معلّقة: ${task.description.substring(0, 50)}...`,
-      });
-    }
-  },
-
-  executePendingTask: async () => {
-    const state = get();
-    
-    if (!state.pendingTask) {
-      get().addNotification({
-        id: Date.now().toString(),
-        type: 'warning',
-        message: '⚠️ لا توجد مهام معلّقة',
-      });
-      return;
-    }
-
-    const task = state.pendingTask;
-    get().addOutputLine(`▶️ تنفيذ المهمة: ${task.description}`);
-
-    try {
-      // If it's a code-related task, use AI
-      if (task.intent && (task.intent.includes('code') || task.intent.includes('كود'))) {
-        await get().sendMessageToAI(`نفذ المهمة التالية: ${task.description}\n\nالسياق: ${task.intent || ''}`);
-      } else {
-        // General task
-        get().addNotification({
-          id: Date.now().toString(),
-          type: 'success',
-          message: `✅ نُفذت: ${task.description}`,
-        });
-      }
-
-      set({ pendingTask: null });
-    } catch (error: any) {
-      get().addNotification({
-        id: Date.now().toString(),
-        type: 'error',
-        message: `❌ فشل التنفيذ: ${error.message}`,
-      });
-    }
-  },
-});
+  
